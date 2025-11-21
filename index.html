@@ -426,6 +426,7 @@
     </div>
 
     <script>
+      // 🔗 your new Apps Script URL
       const SCRIPT_URL =
         "https://script.google.com/macros/library/d/1ekCfN1P1vacTsWecxlb32pgZ8x2GU2wVjcMA2lebSj0hM_jZy2BI0T7R/2";
 
@@ -443,7 +444,7 @@
       google.charts.load("current", { packages: ["corechart"] });
       google.charts.setOnLoadCallback(() => {
         setDefaultDates();
-        loadCategories();       // 🔥 load categories from backend
+        loadCategories();       // load categories dynamically
         refreshDashboard();
         attachResize();
       });
