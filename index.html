@@ -20,11 +20,7 @@
         --border-color: rgba(148, 163, 184, 0.28);
       }
 
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -36,10 +32,7 @@
         padding: 20px 24px 24px;
       }
 
-      .container {
-        max-width: 1380px;
-        margin: 0 auto;
-      }
+      .container { max-width: 1380px; margin: 0 auto; }
 
       h2 {
         font-size: 30px;
@@ -74,15 +67,8 @@
         align-items: flex-end;
       }
 
-      .filter-field {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .filter-field--wide {
-        grid-column: 1 / -1;
-      }
+      .filter-field { display: flex; flex-direction: column; gap: 6px; }
+      .filter-field--wide { grid-column: 1 / -1; }
 
       .filters-right {
         flex: 0 0 auto;
@@ -310,12 +296,8 @@
       }
 
       @media (max-width: 900px) {
-        body {
-          padding: 16px;
-        }
-        .filters {
-          align-items: stretch;
-        }
+        body { padding: 16px; }
+        .filters { align-items: stretch; }
         .filters-left {
           grid-template-columns: repeat(2, minmax(140px, 1fr));
         }
@@ -331,15 +313,11 @@
         .kpi-row {
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         }
-        .chart-grid {
-          grid-template-columns: 1fr;
-        }
+        .chart-grid { grid-template-columns: 1fr; }
       }
 
       @media (max-width: 600px) {
-        .filters-left {
-          grid-template-columns: 1fr;
-        }
+        .filters-left { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -426,9 +404,9 @@
     </div>
 
     <script>
-      // 🔗 your new Apps Script URL
+      // 🔗 IMPORTANT: replace with your Web app URL that ends in /exec
       const SCRIPT_URL =
-        "https://script.google.com/macros/library/d/1ekCfN1P1vacTsWecxlb32pgZ8x2GU2wVjcMA2lebSj0hM_jZy2BI0T7R/2";
+        "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbyOymjnAZwJ676UDif1G9NnPWPEA0gTMdlunOcNosNB1Tn17oM8-XYpQ5eTbajhKC75/exec";
 
       const chartIds = [
         "csatTrendChart",
@@ -444,7 +422,7 @@
       google.charts.load("current", { packages: ["corechart"] });
       google.charts.setOnLoadCallback(() => {
         setDefaultDates();
-        loadCategories();       // load categories dynamically
+        loadCategories();
         refreshDashboard();
         attachResize();
       });
@@ -513,276 +491,4 @@
         });
 
         try {
-          const res = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-          const json = await res.json();
-          if (!json.ok) throw new Error(json.error || "Unknown backend error");
-          drawAll(json.data);
-          setStatus(true, "Data loaded successfully.");
-        } catch (err) {
-          onFailure(err);
-        }
-
-        refreshCategoryChart();
-      }
-
-      function onFailure(error) {
-        const msg =
-          error && (error.message || error.toString())
-            ? error.message || error.toString()
-            : "Unknown error";
-        console.error("Error:", msg, error);
-        setStatus(false, "Dashboard failed to load: " + msg);
-        chartIds.forEach((id) => {
-          document.getElementById(id).innerHTML =
-            '<div class="placeholder">Error: ' + escapeHtml(msg) + "</div>";
-        });
-
-        document.getElementById("totalCsatCount").textContent = "0";
-        document.getElementById("highCsatCount").textContent = "0";
-        document.getElementById("lowCsatCount").textContent = "0";
-        document.getElementById("highCsatPercent").textContent = "";
-        document.getElementById("lowCsatPercent").textContent = "";
-      }
-
-      function updateKpiBoxes(summary) {
-        const totalEl = document.getElementById("totalCsatCount");
-        const highEl = document.getElementById("highCsatCount");
-        const lowEl = document.getElementById("lowCsatCount");
-        const highPctEl = document.getElementById("highCsatPercent");
-        const lowPctEl = document.getElementById("lowCsatPercent");
-
-        if (!summary) {
-          totalEl.textContent = "0";
-          highEl.textContent = "0";
-          lowEl.textContent = "0";
-          highPctEl.textContent = "";
-          lowPctEl.textContent = "";
-          return;
-        }
-
-        const total = summary.total || 0;
-        const high = summary.high || 0;
-        const low = summary.low || 0;
-
-        totalEl.textContent = total;
-        highEl.textContent = high;
-        lowEl.textContent = low;
-
-        if (total > 0) {
-          const highPct = ((high / total) * 100).toFixed(1);
-          const lowPct = ((low / total) * 100).toFixed(1);
-          highPctEl.textContent = highPct + "% of total";
-          lowPctEl.textContent = lowPct + "% of total";
-        } else {
-          highPctEl.textContent = "";
-          lowPctEl.textContent = "";
-        }
-      }
-
-      function drawAll(data) {
-        updateKpiBoxes(data.csatSummary);
-
-        drawChart(
-          "csatTrendChart",
-          "Date-wise CSAT Trend",
-          data.csatTrend,
-          "LineChart"
-        );
-        drawChart(
-          "lowRatingChart",
-          "Top 10 Countries by Negative Rating Count",
-          data.lowRatingCountries,
-          "BarChart"
-        );
-        drawChart(
-          "topConcernsChart",
-          "Top 10 Product Concerns (Sub-category)",
-          data.topConcerns,
-          "BarChart"
-        );
-        drawChart(
-          "csatFunnelChart",
-          "CSAT Rating Distribution (Funnel)",
-          data.csatFunnel,
-          "BarChart"
-        );
-      }
-
-      async function refreshCategoryChart() {
-        const startDate = document.getElementById("startDate").value;
-        const endDate = document.getElementById("endDate").value;
-        const product = document.getElementById("productFilter").value;
-        const agent = document.getElementById("agentFilter").value;
-        const category = document.getElementById("categoryFilter").value;
-
-        const el = document.getElementById("categoryPieChart");
-
-        if (!category) {
-          el.innerHTML =
-            '<div class="placeholder">Select a category to see breakdown.</div>';
-          return;
-        }
-
-        el.innerHTML =
-          '<div class="placeholder"><span class="loader"></span> Loading category breakdown…</div>';
-
-        const params = new URLSearchParams({
-          action: "category",
-          startDate,
-          endDate,
-          product,
-          agent,
-          category,
-        });
-
-        try {
-          const res = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-          const json = await res.json();
-          if (!json.ok) throw new Error(json.error || "Unknown backend error");
-          drawChart(
-            "categoryPieChart",
-            "Drilled-in Report: " + category,
-            json.data,
-            "PieChart"
-          );
-        } catch (error) {
-          const msg =
-            error && (error.message || error.toString())
-              ? error.message || error.toString()
-              : "Unknown error";
-          console.error("Category pie error:", msg, error);
-          el.innerHTML =
-            '<div class="placeholder">Error: ' + escapeHtml(msg) + "</div>";
-        }
-      }
-
-      async function loadCategories() {
-        try {
-          const res = await fetch(`${SCRIPT_URL}?action=categories`);
-          const json = await res.json();
-          if (!json.ok) return;
-
-          const list = json.data || [];
-          const dropdown = document.getElementById("categoryFilter");
-
-          dropdown.innerHTML = '<option value="">Select category…</option>';
-
-          list.forEach((cat) => {
-            const opt = document.createElement("option");
-            opt.value = cat;
-            opt.textContent = cat;
-            dropdown.appendChild(opt);
-          });
-        } catch (err) {
-          console.error("Error loading categories:", err);
-        }
-      }
-
-      function drawChart(elementId, title, dataArray, chartType) {
-        const el = document.getElementById(elementId);
-
-        if (!Array.isArray(dataArray) || dataArray.length <= 1) {
-          el.innerHTML =
-            '<div class="placeholder">No data available for this filter.</div>';
-          return;
-        }
-
-        let table;
-        try {
-          table = google.visualization.arrayToDataTable(dataArray, false);
-        } catch (e) {
-          console.error("DataTable conversion failed:", e);
-          el.innerHTML =
-            '<div class="placeholder">Chart data error.</div>';
-          return;
-        }
-
-        const options = {
-          title: title,
-          height: 320,
-          legend: { position: "none" },
-          chartArea: { left: 70, top: 40, width: "80%", height: "70%" },
-          animation: { duration: 300, easing: "out", startup: true },
-          backgroundColor: "transparent",
-          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
-          hAxis: {
-            textStyle: { color: "#9ca3af" },
-            titleTextStyle: { color: "#e5e7eb" },
-          },
-          vAxis: {
-            textStyle: { color: "#9ca3af" },
-            titleTextStyle: { color: "#e5e7eb" },
-          },
-        };
-
-        let chart;
-        if (chartType === "LineChart") {
-          options.hAxis.title = dataArray[0][0];
-          options.hAxis.slantedText = true;
-          options.hAxis.slantedTextAngle = 30;
-          options.vAxis.title = dataArray[0][1];
-          options.vAxis.viewWindowMode = "explicit";
-          chart = new google.visualization.LineChart(el);
-        } else if (chartType === "PieChart") {
-          options.legend = {
-            position: "right",
-            textStyle: { color: "#e5e7eb" },
-          };
-          options.chartArea = {
-            left: 20,
-            top: 40,
-            width: "90%",
-            height: "75%",
-          };
-          chart = new google.visualization.PieChart(el);
-        } else {
-          options.vAxis.title = dataArray[0][0];
-          options.vAxis.textStyle = { fontSize: 12, color: "#9ca3af" };
-          options.vAxis.titleTextStyle = { italic: false, color: "#e5e7eb" };
-          options.hAxis.title = dataArray[0][1];
-          options.hAxis.minValue = 0;
-          options.hAxis.textStyle = { fontSize: 12, color: "#9ca3af" };
-          options.bar = { groupWidth: "70%" };
-          options.chartArea = {
-            left: 180,
-            top: 50,
-            width: "65%",
-            height: "70%",
-          };
-          chart = new google.visualization.BarChart(el);
-        }
-
-        chart.draw(table, options);
-        el.__chart__ = { chart, table, options, type: chartType };
-      }
-
-      function attachResize() {
-        let resizeTimer;
-        window.addEventListener("resize", () => {
-          clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(() => {
-            chartIds.forEach((id) => {
-              const el = document.getElementById(id);
-              const ref = el && el.__chart__;
-              if (ref && ref.chart && ref.table) {
-                ref.chart.draw(ref.table, ref.options);
-              }
-            });
-          }, 150);
-        });
-      }
-
-      function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, (c) =>
-          ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#039;",
-          }[c])
-        );
-      }
-    </script>
-  </body>
-</html>
+          const res = awai
