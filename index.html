@@ -348,7 +348,6 @@
             <label for="agentFilter">Agent:</label>
             <select id="agentFilter">
               <option value="">All Agents</option>
-              <!-- paste your full agent list here if you want -->
             </select>
           </div>
           <div class="filter-field filter-field--wide">
@@ -404,9 +403,8 @@
     </div>
 
     <script>
-      // 🔗 IMPORTANT: replace with your Web app URL that ends in /exec
-      const SCRIPT_URL =
-        "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbyOymjnAZwJ676UDif1G9NnPWPEA0gTMdlunOcNosNB1Tn17oM8-XYpQ5eTbajhKC75/exec";
+      // 🔗 IMPORTANT: Replace this with your correct Google Apps Script Web App URL
+      const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOymjnAZwJ676UDif1G9NnPWPEA0gTMdlunOcNosNB1Tn17oM8-XYpQ5eTbajhKC75/exec";
 
       const chartIds = [
         "csatTrendChart",
@@ -491,4 +489,274 @@
         });
 
         try {
-          const res = awai
+          const res = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+            method: "GET",
+            redirect: "follow"
+          });
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          updateKPIs(data);
+          drawCharts(data);
+          setStatus(true, "✓ Dashboard loaded");
+
+        } catch (err) {
+          console.error("Dashboard error:", err);
+          setStatus(false, `Dashboard failed to load: ${err.message}`);
+          
+          chartIds.forEach((id) => {
+            document.getElementById(id).innerHTML =
+              `<div class="placeholder">Error loading data. Check console for details.</div>`;
+          });
+        }
+      }
+
+      function updateKPIs(data) {
+        document.getElementById("totalCsatCount").textContent = data.totalCsat || 0;
+        document.getElementById("highCsatCount").textContent = data.highCsat || 0;
+        document.getElementById("lowCsatCount").textContent = data.lowCsat || 0;
+
+        const total = data.totalCsat || 0;
+        if (total > 0) {
+          const highPct = ((data.highCsat / total) * 100).toFixed(1);
+          const lowPct = ((data.lowCsat / total) * 100).toFixed(1);
+          document.getElementById("highCsatPercent").textContent = `${highPct}% of total`;
+          document.getElementById("lowCsatPercent").textContent = `${lowPct}% of total`;
+        }
+      }
+
+      function drawCharts(data) {
+        if (data.trendData && data.trendData.length > 0) {
+          drawTrendChart(data.trendData);
+        } else {
+          document.getElementById("csatTrendChart").innerHTML =
+            '<div class="placeholder">No trend data available</div>';
+        }
+
+        if (data.lowRatingData && data.lowRatingData.length > 0) {
+          drawLowRatingChart(data.lowRatingData);
+        } else {
+          document.getElementById("lowRatingChart").innerHTML =
+            '<div class="placeholder">No low rating data</div>';
+        }
+
+        if (data.topConcerns && data.topConcerns.length > 0) {
+          drawTopConcernsChart(data.topConcerns);
+        } else {
+          document.getElementById("topConcernsChart").innerHTML =
+            '<div class="placeholder">No concerns data</div>';
+        }
+
+        if (data.funnelData && data.funnelData.length > 0) {
+          drawFunnelChart(data.funnelData);
+        } else {
+          document.getElementById("csatFunnelChart").innerHTML =
+            '<div class="placeholder">No funnel data</div>';
+        }
+      }
+
+      function drawTrendChart(trendData) {
+        const chartData = new google.visualization.DataTable();
+        chartData.addColumn("string", "Date");
+        chartData.addColumn("number", "High CSAT");
+        chartData.addColumn("number", "Low CSAT");
+
+        trendData.forEach((row) => {
+          chartData.addRow([row.date, row.high, row.low]);
+        });
+
+        const options = {
+          title: "CSAT Trend Over Time",
+          backgroundColor: "transparent",
+          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+          legend: { position: "bottom", textStyle: { color: "#9ca3af" } },
+          hAxis: { textStyle: { color: "#9ca3af" } },
+          vAxis: { textStyle: { color: "#9ca3af" } },
+          colors: ["#10b981", "#ef4444"],
+          chartArea: { width: "80%", height: "70%" },
+        };
+
+        const chart = new google.visualization.LineChart(
+          document.getElementById("csatTrendChart")
+        );
+        chart.draw(chartData, options);
+      }
+
+      function drawLowRatingChart(lowRatingData) {
+        const chartData = new google.visualization.DataTable();
+        chartData.addColumn("string", "Reason");
+        chartData.addColumn("number", "Count");
+
+        lowRatingData.forEach((row) => {
+          chartData.addRow([row.reason, row.count]);
+        });
+
+        const options = {
+          title: "Low Rating Reasons",
+          backgroundColor: "transparent",
+          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+          legend: { position: "bottom", textStyle: { color: "#9ca3af" } },
+          hAxis: { textStyle: { color: "#9ca3af" } },
+          vAxis: { textStyle: { color: "#9ca3af" } },
+          colors: ["#ef4444"],
+          chartArea: { width: "75%", height: "70%" },
+        };
+
+        const chart = new google.visualization.BarChart(
+          document.getElementById("lowRatingChart")
+        );
+        chart.draw(chartData, options);
+      }
+
+      function drawTopConcernsChart(topConcerns) {
+        const chartData = new google.visualization.DataTable();
+        chartData.addColumn("string", "Concern");
+        chartData.addColumn("number", "Frequency");
+
+        topConcerns.forEach((row) => {
+          chartData.addRow([row.concern, row.count]);
+        });
+
+        const options = {
+          title: "Top Customer Concerns",
+          backgroundColor: "transparent",
+          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+          legend: "none",
+          pieSliceText: "label",
+          pieSliceTextStyle: { color: "#020617", fontSize: 12 },
+          chartArea: { width: "90%", height: "80%" },
+        };
+
+        const chart = new google.visualization.PieChart(
+          document.getElementById("topConcernsChart")
+        );
+        chart.draw(chartData, options);
+      }
+
+      function drawFunnelChart(funnelData) {
+        const chartData = new google.visualization.DataTable();
+        chartData.addColumn("string", "Stage");
+        chartData.addColumn("number", "Count");
+
+        funnelData.forEach((row) => {
+          chartData.addRow([row.stage, row.count]);
+        });
+
+        const options = {
+          title: "CSAT Funnel",
+          backgroundColor: "transparent",
+          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+          legend: "none",
+          hAxis: { textStyle: { color: "#9ca3af" } },
+          vAxis: { textStyle: { color: "#9ca3af" } },
+          colors: ["#6366f1"],
+          chartArea: { width: "80%", height: "70%" },
+        };
+
+        const chart = new google.visualization.ColumnChart(
+          document.getElementById("csatFunnelChart")
+        );
+        chart.draw(chartData, options);
+      }
+
+      async function loadCategories() {
+        try {
+          const res = await fetch(`${SCRIPT_URL}?action=categories`, {
+            method: "GET",
+            redirect: "follow"
+          });
+          
+          if (!res.ok) return;
+          
+          const data = await res.json();
+          
+          if (data.categories && data.categories.length > 0) {
+            const sel = document.getElementById("categoryFilter");
+            data.categories.forEach((cat) => {
+              const opt = document.createElement("option");
+              opt.value = cat;
+              opt.textContent = cat;
+              sel.appendChild(opt);
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to load categories:", err);
+        }
+      }
+
+      async function refreshCategoryChart() {
+        const category = document.getElementById("categoryFilter").value;
+        const chartEl = document.getElementById("categoryPieChart");
+
+        if (!category) {
+          chartEl.innerHTML =
+            '<div class="placeholder">Select a category to see breakdown.</div>';
+          return;
+        }
+
+        chartEl.innerHTML =
+          '<div class="placeholder"><span class="loader"></span> Loading…</div>';
+
+        try {
+          const res = await fetch(
+            `${SCRIPT_URL}?action=categoryBreakdown&category=${encodeURIComponent(category)}`,
+            { method: "GET", redirect: "follow" }
+          );
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const data = await res.json();
+
+          if (data.error) throw new Error(data.error);
+
+          if (data.breakdown && data.breakdown.length > 0) {
+            const chartData = new google.visualization.DataTable();
+            chartData.addColumn("string", "Subcategory");
+            chartData.addColumn("number", "Count");
+
+            data.breakdown.forEach((row) => {
+              chartData.addRow([row.subcategory, row.count]);
+            });
+
+            const options = {
+              title: `${category} Breakdown`,
+              backgroundColor: "transparent",
+              titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+              legend: { position: "bottom", textStyle: { color: "#9ca3af" } },
+              pieSliceText: "value",
+              pieSliceTextStyle: { color: "#020617", fontSize: 12 },
+              chartArea: { width: "90%", height: "75%" },
+            };
+
+            const chart = new google.visualization.PieChart(chartEl);
+            chart.draw(chartData, options);
+          } else {
+            chartEl.innerHTML = '<div class="placeholder">No data for this category</div>';
+          }
+        } catch (err) {
+          console.error("Category chart error:", err);
+          chartEl.innerHTML =
+            `<div class="placeholder">Error: ${err.message}</div>`;
+        }
+      }
+
+      function attachResize() {
+        let timeout;
+        window.addEventListener("resize", () => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            refreshDashboard();
+          }, 300);
+        });
+      }
+    </script>
+  </body>
+</html>
