@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Dynamic CSAT Dashboard</title>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+      :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #ec4899;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --bg-main: #020617;
+        --bg-card: rgba(15, 23, 42, 0.96);
+        --bg-card-soft: rgba(15, 23, 42, 0.8);
+        --text-primary: #e5e7eb;
+        --text-secondary: #9ca3af;
+        --border-color: rgba(148, 163, 184, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top left, #1e293b 0, #020617 45%),
+          radial-gradient(circle at bottom right, #4c1d95 0, #020617 55%);
+        color: var(--text-primary);
+        min-height: 100vh;
+        padding: 20px 24px 24px;
+      }
+
+      .container {
+        max-width: 1380px;
+        margin: 0 auto;
+      }
+
+      h2 {
+        font-size: 30px;
+        font-weight: 700;
+        margin-bottom: 18px;
+        background: linear-gradient(135deg, #6366f1 0%, #ec4899 40%, #22d3ee 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: 0.05em;
+      }
+
+      /* FILTER PANEL ---------------------------------------------------- */
+      .filters {
+        margin-bottom: 20px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        border: 1px solid var(--border-color);
+        background: radial-gradient(circle at top left, #111827 0%, #020617 55%);
+        background-color: var(--bg-card-soft);
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.9);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 22px;
+        align-items: flex-end;
+      }
+
+      .filters-left {
+        flex: 1 1 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        gap: 12px 18px;
+        align-items: flex-end;
+      }
+
+      .filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .filter-field--wide {
+        grid-column: 1 / -1;
+      }
+
+      .filters-right {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        min-width: 190px;
+      }
+
+      .filters label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      .filters input[type="date"],
+      .filters select {
+        padding: 8px 11px;
+        border-radius: 9px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.96);
+        color: var(--text-primary);
+        font-size: 13px;
+        outline: none;
+        min-height: 36px;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease,
+          background 0.18s ease, transform 0.08s ease;
+      }
+
+      .filters input[type="date"]:focus,
+      .filters select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.5);
+        background: #020617;
+        transform: translateY(-1px);
+      }
+
+      .filters button {
+        padding: 9px 26px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        color: white;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-dark) 40%,
+          #22d3ee 100%
+        );
+        box-shadow: 0 12px 30px rgba(79, 70, 229, 0.6);
+        transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.2s;
+        white-space: nowrap;
+      }
+
+      .filters button:hover:not(:disabled) {
+        transform: translateY(-1.5px);
+        box-shadow: 0 18px 42px rgba(79, 70, 229, 0.75);
+      }
+
+      .filters button:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.6);
+      }
+
+      .filters button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+
+      #statusMessage {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid rgba(148, 163, 184, 0.36);
+        min-height: 24px;
+        max-width: 260px;
+        text-align: right;
+      }
+
+      /* KPI CARDS ------------------------------------------------------- */
+      .kpi-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(210px, 1fr));
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+
+      .kpi-card {
+        position: relative;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: radial-gradient(circle at top left, #0b1120 0, #020617 55%);
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        box-shadow: 0 20px 55px rgba(15, 23, 42, 0.92);
+        overflow: hidden;
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          border-color 0.12s ease;
+      }
+
+      .kpi-card::before {
+        content: "";
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 140px;
+        height: 140px;
+        border-radius: 999px;
+        background: radial-gradient(
+          circle,
+          rgba(129, 140, 248, 0.7),
+          transparent
+        );
+        opacity: 0.22;
+        pointer-events: none;
+      }
+
+      .kpi-card:nth-child(2)::before {
+        background: radial-gradient(circle, rgba(34, 197, 94, 0.7), transparent);
+      }
+
+      .kpi-card:nth-child(3)::before {
+        background: radial-gradient(circle, rgba(248, 113, 113, 0.85), transparent);
+      }
+
+      .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 26px 70px rgba(15, 23, 42, 0.95);
+        border-color: rgba(129, 140, 248, 0.65);
+      }
+
+      .kpi-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+      }
+
+      .kpi-value {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1.1;
+        background: linear-gradient(
+          135deg,
+          #e5e7eb 0%,
+          #c4b5fd 40%,
+          #22d3ee 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .kpi-percent {
+        margin-top: 5px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      /* CHART GRID ------------------------------------------------------ */
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .chart {
+        min-height: 340px;
+        border-radius: 18px;
+        padding: 12px 14px 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 22px 65px rgba(15, 23, 42, 0.94);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          border-color 0.12s ease;
+      }
+
+      .chart:hover {
+        transform: translateY(-2px);
+        border-color: rgba(129, 140, 248, 0.65);
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.97);
+      }
+
+      .placeholder {
+        color: var(--text-secondary);
+        font-size: 14px;
+        text-align: center;
+        padding: 16px;
+      }
+
+      .loader {
+        border: 3px solid rgba(99, 102, 241, 0.15);
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 6px;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 1100px) {
+        .filters-left {
+          grid-template-columns: repeat(3, minmax(150px, 1fr));
+        }
+        .chart-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 900px) {
+        body {
+          padding: 16px;
+        }
+        .filters {
+          align-items: stretch;
+        }
+        .filters-left {
+          grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+        .filters-right {
+          width: 100%;
+          align-items: stretch;
+        }
+        .filters button,
+        #statusMessage {
+          width: 100%;
+          text-align: center;
+        }
+        .kpi-row {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .filters-left {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>Dynamic CSAT Dashboard</h2>
+
+      <div class="filters">
+        <div class="filters-left">
+          <div class="filter-field">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" />
+          </div>
+          <div class="filter-field">
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate" />
+          </div>
+          <div class="filter-field">
+            <label for="productFilter">Product:</label>
+            <select id="productFilter">
+              <option value="">All</option>
+              <option value="CFDs">CFDs</option>
+              <option value="Futures">Futures</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label for="agentFilter">Agent:</label>
+            <select id="agentFilter">
+              <option value="">All Agents</option>
+              <!-- you can paste your long agent list here if you want -->
+            </select>
+          </div>
+          <div class="filter-field filter-field--wide">
+            <label for="categoryFilter">Drilled-in Report:</label>
+            <select id="categoryFilter" onchange="refreshCategoryChart()">
+              <option value="">Select category…</option>
+              <option value="KYC_Issue">KYC_Issue</option>
+              <option value="Next Phase Button Missing">Next Phase Button Missing</option>
+              <option value="Certificate Issue">Certificate Issue</option>
+              <option value="Platform Change Request">Platform Change Request</option>
+              <!-- add the rest of your categories here -->
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-right">
+          <button id="filterBtn" onclick="refreshDashboard()">Apply Filter</button>
+          <span id="statusMessage"></span>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total CSAT Count</div>
+          <div class="kpi-value" id="totalCsatCount">0</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">High CSAT Count</div>
+          <div class="kpi-value" id="highCsatCount">0</div>
+          <div class="kpi-percent" id="highCsatPercent"></div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Low CSAT Count</div>
+          <div class="kpi-value" id="lowCsatCount">0</div>
+          <div class="kpi-percent" id="lowCsatPercent"></div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div id="csatTrendChart" class="chart">
+          <div class="placeholder">Waiting for data…</div>
+        </div>
+        <div id="lowRatingChart" class="chart">
+          <div class="placeholder">Waiting for data…</div>
+        </div>
+        <div id="topConcernsChart" class="chart">
+          <div class="placeholder">Waiting for data…</div>
+        </div>
+        <div id="csatFunnelChart" class="chart">
+          <div class="placeholder">Waiting for data…</div>
+        </div>
+        <div id="categoryPieChart" class="chart">
+          <div class="placeholder">Select a category to see breakdown.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 🔗 YOUR SCRIPT URL
+      const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOymjnAZwJ676UDif1G9NnPWPEA0gTMdlunOcNosNB1Tn17oM8-XYpQ5eTbajhKC75/exec";
+
+      const chartIds = [
+        "csatTrendChart",
+        "lowRatingChart",
+        "topConcernsChart",
+        "csatFunnelChart",
+        "categoryPieChart",
+      ];
+
+      const statusEl = document.getElementById("statusMessage");
+      const filterBtn = document.getElementById("filterBtn");
+
+      google.charts.load("current", { packages: ["corechart"] });
+      google.charts.setOnLoadCallback(() => {
+        setDefaultDates();
+        refreshDashboard();
+        attachResize();
+      });
+
+      function toISO(d) {
+        const tzOff = d.getTimezoneOffset();
+        const local = new Date(d.getTime() - tzOff * 60000);
+        return local.toISOString().slice(0, 10);
+      }
+
+      function setDefaultDates() {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 29);
+        document.getElementById("startDate").value = toISO(start);
+        document.getElementById("endDate").value = toISO(end);
+      }
+
+      function showLoading() {
+        filterBtn.disabled = true;
+        statusEl.innerHTML = '<span class="loader"></span> Loading data…';
+
+        document.getElementById("totalCsatCount").textContent = "…";
+        document.getElementById("highCsatCount").textContent = "…";
+        document.getElementById("lowCsatCount").textContent = "…";
+        document.getElementById("highCsatPercent").textContent = "";
+        document.getElementById("lowCsatPercent").textContent = "";
+
+        chartIds.forEach((id) => {
+          const el = document.getElementById(id);
+          el.innerHTML =
+            '<div class="placeholder"><span class="loader"></span> Fetching data…</div>';
+        });
+      }
+
+      function setStatus(ok, msg) {
+        filterBtn.disabled = false;
+        statusEl.style.color = ok ? "#10b981" : "#ef4444";
+        statusEl.textContent = msg;
+        if (ok) setTimeout(() => (statusEl.textContent = ""), 4000);
+      }
+
+      async function refreshDashboard() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const product = document.getElementById("productFilter").value;
+        const agent = document.getElementById("agentFilter").value;
+
+        if (!startDate || !endDate) {
+          setStatus(false, "Please choose both start and end dates.");
+          return;
+        }
+        if (new Date(startDate) > new Date(endDate)) {
+          setStatus(false, "Start Date must be before End Date.");
+          return;
+        }
+
+        showLoading();
+
+        const params = new URLSearchParams({
+          action: "dashboard",
+          startDate,
+          endDate,
+          product,
+          agent,
+        });
+
+        try {
+          const res = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.error || "Unknown backend error");
+          drawAll(json.data);
+          setStatus(true, "Data loaded successfully.");
+        } catch (err) {
+          onFailure(err);
+        }
+
+        refreshCategoryChart();
+      }
+
+      function onFailure(error) {
+        const msg =
+          error && (error.message || error.toString())
+            ? error.message || error.toString()
+            : "Unknown error";
+        console.error("Error:", msg, error);
+        setStatus(false, "Dashboard failed to load: " + msg);
+        chartIds.forEach((id) => {
+          document.getElementById(id).innerHTML =
+            '<div class="placeholder">Error: ' + escapeHtml(msg) + "</div>";
+        });
+
+        document.getElementById("totalCsatCount").textContent = "0";
+        document.getElementById("highCsatCount").textContent = "0";
+        document.getElementById("lowCsatCount").textContent = "0";
+        document.getElementById("highCsatPercent").textContent = "";
+        document.getElementById("lowCsatPercent").textContent = "";
+      }
+
+      function updateKpiBoxes(summary) {
+        const totalEl = document.getElementById("totalCsatCount");
+        const highEl = document.getElementById("highCsatCount");
+        const lowEl = document.getElementById("lowCsatCount");
+        const highPctEl = document.getElementById("highCsatPercent");
+        const lowPctEl = document.getElementById("lowCsatPercent");
+
+        if (!summary) {
+          totalEl.textContent = "0";
+          highEl.textContent = "0";
+          lowEl.textContent = "0";
+          highPctEl.textContent = "";
+          lowPctEl.textContent = "";
+          return;
+        }
+
+        const total = summary.total || 0;
+        const high = summary.high || 0;
+        const low = summary.low || 0;
+
+        totalEl.textContent = total;
+        highEl.textContent = high;
+        lowEl.textContent = low;
+
+        if (total > 0) {
+          const highPct = ((high / total) * 100).toFixed(1);
+          const lowPct = ((low / total) * 100).toFixed(1);
+          highPctEl.textContent = highPct + "% of total";
+          lowPctEl.textContent = lowPct + "% of total";
+        } else {
+          highPctEl.textContent = "";
+          lowPctEl.textContent = "";
+        }
+      }
+
+      function drawAll(data) {
+        updateKpiBoxes(data.csatSummary);
+
+        drawChart(
+          "csatTrendChart",
+          "Date-wise CSAT Trend",
+          data.csatTrend,
+          "LineChart"
+        );
+        drawChart(
+          "lowRatingChart",
+          "Top 10 Countries by Negative Rating Count",
+          data.lowRatingCountries,
+          "BarChart"
+        );
+        drawChart(
+          "topConcernsChart",
+          "Top 10 Product Concerns (Sub-category)",
+          data.topConcerns,
+          "BarChart"
+        );
+        drawChart(
+          "csatFunnelChart",
+          "CSAT Rating Distribution (Funnel)",
+          data.csatFunnel,
+          "BarChart"
+        );
+      }
+
+      async function refreshCategoryChart() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const product = document.getElementById("productFilter").value;
+        const agent = document.getElementById("agentFilter").value;
+        const category = document.getElementById("categoryFilter").value;
+
+        const el = document.getElementById("categoryPieChart");
+
+        if (!category) {
+          el.innerHTML =
+            '<div class="placeholder">Select a category to see breakdown.</div>';
+          return;
+        }
+
+        el.innerHTML =
+          '<div class="placeholder"><span class="loader"></span> Loading category breakdown…</div>';
+
+        const params = new URLSearchParams({
+          action: "category",
+          startDate,
+          endDate,
+          product,
+          agent,
+          category,
+        });
+
+        try {
+          const res = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.error || "Unknown backend error");
+          drawChart(
+            "categoryPieChart",
+            "Drilled-in Report: " + category,
+            json.data,
+            "PieChart"
+          );
+        } catch (error) {
+          const msg =
+            error && (error.message || error.toString())
+              ? error.message || error.toString()
+              : "Unknown error";
+          console.error("Category pie error:", msg, error);
+          el.innerHTML =
+            '<div class="placeholder">Error: ' + escapeHtml(msg) + "</div>";
+        }
+      }
+
+      function drawChart(elementId, title, dataArray, chartType) {
+        const el = document.getElementById(elementId);
+
+        if (!Array.isArray(dataArray) || dataArray.length <= 1) {
+          el.innerHTML =
+            '<div class="placeholder">No data available for this filter.</div>';
+          return;
+        }
+
+        let table;
+        try {
+          table = google.visualization.arrayToDataTable(dataArray, false);
+        } catch (e) {
+          console.error("DataTable conversion failed:", e);
+          el.innerHTML =
+            '<div class="placeholder">Chart data error.</div>';
+          return;
+        }
+
+        const options = {
+          title: title,
+          height: 320,
+          legend: { position: "none" },
+          chartArea: { left: 70, top: 40, width: "80%", height: "70%" },
+          animation: { duration: 300, easing: "out", startup: true },
+          backgroundColor: "transparent",
+          titleTextStyle: { color: "#e5e7eb", fontSize: 16 },
+          hAxis: {
+            textStyle: { color: "#9ca3af" },
+            titleTextStyle: { color: "#e5e7eb" },
+          },
+          vAxis: {
+            textStyle: { color: "#9ca3af" },
+            titleTextStyle: { color: "#e5e7eb" },
+          },
+        };
+
+        let chart;
+        if (chartType === "LineChart") {
+          options.hAxis.title = dataArray[0][0];
+          options.hAxis.slantedText = true;
+          options.hAxis.slantedTextAngle = 30;
+          options.vAxis.title = dataArray[0][1];
+          options.vAxis.viewWindowMode = "explicit";
+          chart = new google.visualization.LineChart(el);
+        } else if (chartType === "PieChart") {
+          options.legend = {
+            position: "right",
+            textStyle: { color: "#e5e7eb" },
+          };
+          options.chartArea = {
+            left: 20,
+            top: 40,
+            width: "90%",
+            height: "75%",
+          };
+          chart = new google.visualization.PieChart(el);
+        } else {
+          options.vAxis.title = dataArray[0][0];
+          options.vAxis.textStyle = { fontSize: 12, color: "#9ca3af" };
+          options.vAxis.titleTextStyle = { italic: false, color: "#e5e7eb" };
+          options.hAxis.title = dataArray[0][1];
+          options.hAxis.minValue = 0;
+          options.hAxis.textStyle = { fontSize: 12, color: "#9ca3af" };
+          options.bar = { groupWidth: "70%" };
+          options.chartArea = {
+            left: 180,
+            top: 50,
+            width: "65%",
+            height: "70%",
+          };
+          chart = new google.visualization.BarChart(el);
+        }
+
+        chart.draw(table, options);
+        el.__chart__ = { chart, table, options, type: chartType };
+      }
+
+      function attachResize() {
+        let resizeTimer;
+        window.addEventListener("resize", () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            chartIds.forEach((id) => {
+              const el = document.getElementById(id);
+              const ref = el && el.__chart__;
+              if (ref && ref.chart && ref.table) {
+                ref.chart.draw(ref.table, ref.options);
+              }
+            });
+          }, 150);
+        });
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+          }[c])
+        );
+      }
+    </script>
+  </body>
+</html>
